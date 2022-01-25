@@ -7,6 +7,10 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,12 +50,12 @@ public class CarFine extends TelegramLongPollingBot implements CarFineInterface{
                     state = "Search by passport";
                 }
             }
-            executeState(state, chatId);
+            executeState(state, chatId, messageFromUser);
 
         }
     }
     @SneakyThrows
-    public void executeState(String state, String chatId) {
+    public void executeState(String state, String chatId, String messageFromUser) {
         switch (state) {
             case "/start" -> {
                 SendMessage sendMessage = new SendMessage(chatId, "Welcome to fine checker bot");
@@ -79,7 +83,21 @@ public class CarFine extends TelegramLongPollingBot implements CarFineInterface{
                 execute(sendMessage);
             }
             case "user_searching" -> {
-                System.out.println("");
+                System.out.println(messageFromUser);
+                Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/car_fine_bot", "postgres", "star");
+                PreparedStatement preparedStatement = connection.prepareStatement("select * from get_user_info(?)");
+                preparedStatement.setString(1, messageFromUser);
+                ResultSet resultSet = preparedStatement.executeQuery();
+                while (resultSet.next()) {
+                    String stringBuilder = "name: " + resultSet.getString("name") + "\n" +
+                            "password_number: " + resultSet.getString("passport_number") + "\n" +
+                            "car name: " + resultSet.getString("car_name") + "\n" +
+                            "car number: " + resultSet.getString("car_number");
+                    SendMessage sendMessage = new SendMessage(chatId, stringBuilder);
+                    execute(sendMessage);
+                }
+                connection.close();
+
             }
             case "user_fine_history" -> {
 
